@@ -24,8 +24,10 @@ Não culpe a faca por cortar, nem a arma por atirar.
 ```
 Homologado em ambiente:
 Windows 10
+64G RAM
 Python 3.12.11
-NVIDIA RTX 4060 8G
+NVIDIA RTX 4060 8G VRAM
+1T M2 NVME
 ```
 
 ```
