@@ -1,6 +1,6 @@
 <img width="1121" height="607" alt="face1" src="https://github.com/user-attachments/assets/af570713-051d-4c76-bc78-9540d65c4935" />
 
-# Script Pyton para Text-to-Image SDXL  
+# Script Python para Text-to-Image SDXL  
 ------------
 Carlos Magno Abreu @2025
 
