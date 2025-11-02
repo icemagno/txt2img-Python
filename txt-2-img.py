@@ -30,15 +30,15 @@ config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"
 # --- Generation Parameters 
 seed                    = 941758022     # random.randint(0, 2**32 - 1)
 batch_size              = 1             # Quantas imagens você quer gerar?
-cfg                     = 7.0           # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
-steps                   = 30            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
+cfg                     = 2.3           # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
+steps                   = 15            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
 width                   = 960           # Largura da imagem ( siga o padrão SDXL )
 height                  = 1280          # Altura da imagem  ( siga o padrão SDXL )
 clip_skip               = 2             # Quantas camadas finais pular do CLIP Text Encoder
 # --- Upscale HiRes Fix
-use_hires_fix           = False         # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
+use_hires_fix           = True         # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
 upscale_factor          = 1.5           # Quer ampliar quantas vezes a imagem original
-upscale_denoise         = 0.45          # O quanto quer modificar a imagem original no processo?
+upscale_denoise         = 0.46          # O quanto quer modificar a imagem original no processo de upscaling?
 # --- Prompt File Paths ---
 long_prompt_file        = "./prompt-2.txt"          # O prompt
 negative_prompt_file    = "./negative_prompt.txt"   # O que quer evitar na imagem?
