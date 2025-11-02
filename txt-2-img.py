@@ -23,10 +23,9 @@ import random
 
 
 # ------------------------------------------------------------------------------
-# --- Model and Configuration Paths ---
-model_path              = "/Magno/Projetos/train-model/digitalinfluencersv1.safetensors"
-hf_model_id             = "John6666/goddess-of-realism-gor-pony-v2art-sdxl" 
-config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"
+model_path              = "/Magno/Projetos/train-model/digitalinfluencersv1.safetensors" # Está usando um checkpoint CivitAI?
+hf_model_id             = "John6666/goddess-of-realism-gor-pony-v2art-sdxl"              # ... ou vai querer baixar um modelo HuggingFace?  
+config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"                  # Usei os checkpoints Pony Diffusion então precisei disso
 # --- Generation Parameters 
 seed                    = 941758022     # random.randint(0, 2**32 - 1)
 batch_size              = 1             # Quantas imagens você quer gerar?
@@ -36,7 +35,7 @@ width                   = 960           # Largura da imagem ( siga o padrão SDX
 height                  = 1280          # Altura da imagem  ( siga o padrão SDXL )
 clip_skip               = 2             # Quantas camadas finais pular do CLIP Text Encoder
 # --- Upscale HiRes Fix
-use_hires_fix           = True         # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
+use_hires_fix           = True          # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
 upscale_factor          = 1.5           # Quer ampliar quantas vezes a imagem original
 upscale_denoise         = 0.46          # O quanto quer modificar a imagem original no processo de upscaling?
 # --- Prompt File Paths ---
