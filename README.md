@@ -37,3 +37,6 @@ também deve ser livre e liberada sob a GPL-3.0.
 Além disso, você deve fornecer o código-fonte, não pode impor restrições
 adicionais, e não pode transformar o software em algo proprietário.
 ```
+
+<img width="1121" height="607" alt="face2" src="https://github.com/user-attachments/assets/be05d6ff-1563-4ad0-a3bf-48e6def597c7" />
+
