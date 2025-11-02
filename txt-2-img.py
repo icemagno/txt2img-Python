@@ -1,5 +1,5 @@
-# --- Environment Setup ---
-# python -m venv venv
+# ----------------------------------------------------------------------
+# python -m venv venv       # Roda isso só uma vez!
 # .\venv\Scripts\activate
 # python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121  
 # python -m pip install transformers auto-gptq optimum datasets peft                                    
@@ -8,6 +8,7 @@
 # python -m pip install xformers==0.0.23 
 # python -m pip install hf_xet
 # python -m pip install torchsde
+# ----------------------------------------------------------------------
 
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"]     = "0"
@@ -22,12 +23,12 @@ from PIL import Image
 import random
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 model_path              = "/Magno/Projetos/train-model/digitalinfluencersv1.safetensors" # Está usando um checkpoint CivitAI?
 hf_model_id             = "John6666/goddess-of-realism-gor-pony-v2art-sdxl"              # ... ou vai querer baixar um modelo HuggingFace?  
 config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"                  # Usei os checkpoints Pony Diffusion então precisei disso
 # --- Generation Parameters 
-seed                    = 941758022     # random.randint(0, 2**32 - 1)
+seed                    = 941758022     # random.randint(0, 2**32 - 1) se quiser gerar nova imagem a cada rodada
 batch_size              = 1             # Quantas imagens você quer gerar?
 cfg                     = 2.3           # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
 steps                   = 15            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
@@ -36,22 +37,20 @@ height                  = 1280          # Altura da imagem  ( siga o padrão SDX
 clip_skip               = 2             # Quantas camadas finais pular do CLIP Text Encoder
 # --- Upscale HiRes Fix
 use_hires_fix           = True          # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
-upscale_factor          = 1.5           # Quer ampliar quantas vezes a imagem original
+upscale_factor          = 1.5           # Quer ampliar quantas vezes a imagem original?
 upscale_denoise         = 0.46          # O quanto quer modificar a imagem original no processo de upscaling?
 # --- Prompt File Paths ---
 long_prompt_file        = "./prompt-2.txt"          # O prompt
 negative_prompt_file    = "./negative_prompt.txt"   # O que quer evitar na imagem?
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-
-
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 
 
 
 # ----------------------------------------------------------------------
-# ------------------- Ler os prompts do arquivo ------------------------
+# ----------------- Ler os prompts do arquivo --------------------------
 def load_prompt_from_file(filepath):
     if not os.path.exists(filepath):
         print(f"Error: Prompt file not found at {filepath}")
@@ -73,22 +72,23 @@ print("Lendo / Baixando o modelo...")
 #    "stable-diffusion-v1-5/stable-diffusion-v1-5",
 #    use_safetensors=True
 # )
-# --------------------------------------------------------------------------
-pipe = StableDiffusionXLPipeline.from_single_file(
-    model_path,
-    original_config=config_path,
-    torch_dtype=torch.float16,
-    use_safetensors=True,
-    local_files_only=False,
-)
+# ----------------------------------------------------------------------
+#pipe = StableDiffusionXLPipeline.from_single_file(
+#    model_path,
+#    original_config=config_path,
+#    dtype=torch.float16,
+#    use_safetensors=True,
+#    local_files_only=False,
+#)
 # ----------------------------------------------------------------------
 
 # ... ou se quer que o script baixe o modelo para você do site Hugging Face.
-#pipe = StableDiffusionXLPipeline.from_pretrained(
-#    hf_model_id,
-#    use_safetensors=True,
-#    torch_dtype=torch.float16,
-#)
+# Isso vai baixar uns 6 ou 7 Gigas para sua máquina dependendo to tamanho do modelo.
+pipe = StableDiffusionXLPipeline.from_pretrained(
+    hf_model_id,
+    use_safetensors=True,
+    dtype=torch.float16,
+)
 # ----------------------------------------------------------------------
 
 print("Modelo carregado.")
@@ -98,32 +98,48 @@ pipe.to("cuda")
 # ----------------------------------------------------------------------
 # Escolha UM Scheduler apenas:
 
+# ----------------------------------------------------------------------
 # Scheduler Euler A 
-# pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+# ----------------------------------------------------------------------
+# pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(
+#   pipe.scheduler.config
+# )
+# ----------------------------------------------------------------------
 
-# Scheduler Euler A + Karras
+# ----------------------------------------------------------------------
+# Scheduler Euler A Karras
+# ----------------------------------------------------------------------
 # pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(
 #   pipe.scheduler.config,
 #   timestep_spacing="karras"
-#)
+# )
+# ----------------------------------------------------------------------
 
+# ----------------------------------------------------------------------
 # Scheduler DPM++ SDE Karras
+# ----------------------------------------------------------------------
 pipe.scheduler = DPMSolverSDEScheduler.from_config(
     pipe.scheduler.config,
     use_karras_sigmas=True
 )
+# ----------------------------------------------------------------------
 
-# Scheduler DPM++ 1S
-#pipe.scheduler = DPMSolverSinglestepScheduler.from_config(
+# ----------------------------------------------------------------------
+# Scheduler DPM++ Karras
+# ----------------------------------------------------------------------
+# pipe.scheduler = DPMSolverSinglestepScheduler.from_config(
     # pipe.scheduler.config,
     # use_karras_sigmas=True
-#)
+# )
+# ----------------------------------------------------------------------
 
-# Scheduler DPM++ 2M
-#pipe.scheduler = DPMSolverMultistepScheduler.from_config(
+# ----------------------------------------------------------------------
+# Scheduler DPM++ 2M Karras
+# ----------------------------------------------------------------------
+# pipe.scheduler = DPMSolverMultistepScheduler.from_config(
 #    pipe.scheduler.config,
 #    use_karras_sigmas=True
-#)
+# )
 # ----------------------------------------------------------------------
 
 
