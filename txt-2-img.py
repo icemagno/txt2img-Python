@@ -28,10 +28,10 @@ model_path              = "/Magno/Projetos/train-model/digitalinfluencersv1.safe
 hf_model_id             = "John6666/goddess-of-realism-gor-pony-v2art-sdxl" 
 config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"
 # --- Generation Parameters 
-seed                    = 820590516     # random.randint(0, 2**32 - 1)
+seed                    = 941758022     # random.randint(0, 2**32 - 1)
 batch_size              = 1             # Quantas imagens você quer gerar?
 cfg                     = 7.0           # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
-steps                   = 20            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
+steps                   = 30            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
 width                   = 960           # Largura da imagem ( siga o padrão SDXL )
 height                  = 1280          # Altura da imagem  ( siga o padrão SDXL )
 clip_skip               = 2             # Quantas camadas finais pular do CLIP Text Encoder
@@ -67,12 +67,14 @@ negative_prompt = load_prompt_from_file(negative_prompt_file)
 # ----------------------------------------------------------------------
 print("Lendo / Baixando o modelo...")
 # Se você baixou algum checkpoint do site CivitAI ...
-# --- Load the Pipeline ---
+#
+# ---------- Descomente esse trecho somente se tiver problemas ao encontrar 
+# ---------- os arquivos de base do SD 1.5 
 # just_to_download_the_base_files = DiffusionPipeline.from_pretrained(
 #    "stable-diffusion-v1-5/stable-diffusion-v1-5",
 #    use_safetensors=True
 # )
-
+# --------------------------------------------------------------------------
 pipe = StableDiffusionXLPipeline.from_single_file(
     model_path,
     original_config=config_path,
@@ -81,6 +83,7 @@ pipe = StableDiffusionXLPipeline.from_single_file(
     local_files_only=False,
 )
 # ----------------------------------------------------------------------
+
 # ... ou se quer que o script baixe o modelo para você do site Hugging Face.
 #pipe = StableDiffusionXLPipeline.from_pretrained(
 #    hf_model_id,
