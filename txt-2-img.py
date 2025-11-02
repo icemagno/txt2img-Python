@@ -1,67 +1,135 @@
-import torch
-from diffusers import StableDiffusionXLPipeline, DiffusionPipeline
-from PIL import Image
+# --- Environment Setup ---
+# python -m venv venv
+# .\venv\Scripts\activate
+# python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121  
+# python -m pip install transformers auto-gptq optimum datasets peft                                    
+# python -m pip install numpy pandas
+# python -m pip install tensorflow numpy tf-keras diffusers transformers accelerate
+# python -m pip install xformers==0.0.23 
+# python -m pip install hf_xet
+# python -m pip install torchsde
+
 import os
+os.environ["TF_ENABLE_ONEDNN_OPTS"]     = "0"
+os.environ["HF_HOME"]                   = "./hf_cache"
+os.environ["HUGGINGFACE_HUB_CACHE"]     = "./hf_cache"
+os.environ["DIFFUSERS_CACHE"]           = "./hf_cache"
+os.environ["HF_HUB_OFFLINE"]            = "0"
+
+import torch
+from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler, DPMSolverSDEScheduler,DPMSolverMultistepScheduler
+from PIL import Image
 import random
 
-# --- Environment Setup ---
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-os.environ["HF_HOME"] = "./hf_cache"
-os.environ["HUGGINGFACE_HUB_CACHE"] = "./hf_cache"
-os.environ["DIFFUSERS_CACHE"] = "./hf_cache"
-os.environ["HF_HUB_OFFLINE"] = "0"
 
+# ------------------------------------------------------------------------------
 # --- Model and Configuration Paths ---
-model_path = "/Magno/Projetos/train-model/digitalinfluencersv1.safetensors"
-config_path = "/Magno/Projetos/train-model/sd_xl_base.yaml"
-
+model_path              = "/Magno/Projetos/train-model/digitalinfluencersv1.safetensors"
+hf_model_id             = "John6666/goddess-of-realism-gor-pony-v2art-sdxl" 
+config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"
 # --- Generation Parameters 
-seed    = random.randint(0, 2**32 - 1)
-cfg     = 5.0
-steps   = 28
-width   = 960
-height  = 1280
+seed                    = 820590516     # random.randint(0, 2**32 - 1)
+batch_size              = 1             # Quantas imagens você quer gerar?
+cfg                     = 7.0           # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
+steps                   = 20            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
+width                   = 960           # Largura da imagem ( siga o padrão SDXL )
+height                  = 1280          # Altura da imagem  ( siga o padrão SDXL )
+clip_skip               = 2             # Quantas camadas finais pular do CLIP Text Encoder
 # --- Upscale HiRes Fix
-upscale_factor = 1.5
-upscale_denoise = 0.4
+use_hires_fix           = False         # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
+upscale_factor          = 1.5           # Quer ampliar quantas vezes a imagem original
+upscale_denoise         = 0.45          # O quanto quer modificar a imagem original no processo?
+# --- Prompt File Paths ---
+long_prompt_file        = "./prompt-2.txt"          # O prompt
+negative_prompt_file    = "./negative_prompt.txt"   # O que quer evitar na imagem?
+
+# ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 
-long_prompt = (
-    "score_9, score_8_up, score_7_up, source_pony, masterpiece, best quality, "
-    "realistic, (full body), 1girl,"
-    "masterpiece, best quality, newest, absurdres, highres, girl in armor, open stomach, armguards, "
-    "exposed breasts, medium breasts, covered nipples , cybernetic, visible ribcage, beautiful face, long flowing hair"
-    "action pose, horny, sexy, sensual"
-)
-
-negative_prompt = (
-    "worst quality, low quality, normal quality, text, signature, watermark, ugly, deformed, "
-    "simple background, plain background, white background, blurry background, out of frame, studio shot, "
-    "cartoon, anime, drawing, painting"
-)
 
 
+
+
+# ----------------------------------------------------------------------
+# ------------------- Ler os prompts do arquivo ------------------------
+def load_prompt_from_file(filepath):
+    if not os.path.exists(filepath):
+        print(f"Error: Prompt file not found at {filepath}")
+        exit()
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read().strip()
+
+long_prompt = load_prompt_from_file(long_prompt_file)
+negative_prompt = load_prompt_from_file(negative_prompt_file)
+
+
+# ----------------------------------------------------------------------
+print("Lendo / Baixando o modelo...")
+# Se você baixou algum checkpoint do site CivitAI ...
 # --- Load the Pipeline ---
-
 # just_to_download_the_base_files = DiffusionPipeline.from_pretrained(
 #    "stable-diffusion-v1-5/stable-diffusion-v1-5",
 #    use_safetensors=True
 # )
 
-print("Loading model from checkpoint...")
 pipe = StableDiffusionXLPipeline.from_single_file(
     model_path,
-    original_config_file=config_path,
+    original_config=config_path,
     torch_dtype=torch.float16,
     use_safetensors=True,
     local_files_only=False,
 )
-print("Model loaded successfully.")
+# ----------------------------------------------------------------------
+# ... ou se quer que o script baixe o modelo para você do site Hugging Face.
+#pipe = StableDiffusionXLPipeline.from_pretrained(
+#    hf_model_id,
+#    use_safetensors=True,
+#    torch_dtype=torch.float16,
+#)
+# ----------------------------------------------------------------------
+
+print("Modelo carregado.")
 pipe.to("cuda")
 
-# --- ADVANCED: Function to handle long prompts ---
-# This function correctly replicates ComfyUI's long prompt handling for SDXL.
-def encode_prompt_long(pipe, prompt):
+
+# ----------------------------------------------------------------------
+# Escolha UM Scheduler apenas:
+
+# Scheduler Euler A 
+# pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+
+# Scheduler Euler A + Karras
+# pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(
+#   pipe.scheduler.config,
+#   timestep_spacing="karras"
+#)
+
+# Scheduler DPM++ SDE Karras
+pipe.scheduler = DPMSolverSDEScheduler.from_config(
+    pipe.scheduler.config,
+    use_karras_sigmas=True
+)
+
+# Scheduler DPM++ 1S
+#pipe.scheduler = DPMSolverSinglestepScheduler.from_config(
+    # pipe.scheduler.config,
+    # use_karras_sigmas=True
+#)
+
+# Scheduler DPM++ 2M
+#pipe.scheduler = DPMSolverMultistepScheduler.from_config(
+#    pipe.scheduler.config,
+#    use_karras_sigmas=True
+#)
+# ----------------------------------------------------------------------
+
+
+
+# ----------------------------------------------------------------------
+# --- Método para passar a limitação de 77 tokens ---
+# --- Cortesia do Gemini CLI
+def encode_prompt_long(pipe, prompt, clip_skip=0):
     """
     Encodes a long prompt by breaking it into 77-token chunks for the first
     text encoder and concatenating the results. It uses the second text
@@ -86,8 +154,8 @@ def encode_prompt_long(pipe, prompt):
         # The output object from this encoder is a CLIPTextModelOutput
         output_2 = encoder_2(tokens_2, output_hidden_states=True, return_dict=True)
         
-        # The text embeddings are the second to last hidden state
-        embeds_2 = output_2.hidden_states[-2]
+        # The text embeddings are the (clip_skip + 1)th to last hidden state
+        embeds_2 = output_2.hidden_states[-(1 + clip_skip)]
         
         # *** THE FIX IS HERE ***
         # The pooled output for this specific encoder is in the `text_embeds` attribute, not `pooled_output`.
@@ -107,8 +175,8 @@ def encode_prompt_long(pipe, prompt):
         
         with torch.no_grad():
             output_1 = encoder_1(chunk, output_hidden_states=True)
-            # Use the second to last hidden state for the first encoder (OpenCLIP standard)
-            embeds_1 = output_1.hidden_states[-2]
+            # Use the (clip_skip + 1)th to last hidden state for the first encoder (OpenCLIP standard)
+            embeds_1 = output_1.hidden_states[-(1 + clip_skip)]
             embeds_1_list.append(embeds_1)
     
     # Concatenate the embeddings from all chunks
@@ -132,9 +200,9 @@ def encode_prompt_long(pipe, prompt):
 # --- Manual Encoding ---
 print("Encoding long prompts...")
 # Encode the positive prompt
-prompt_embeds, pooled_prompt_embeds = encode_prompt_long(pipe, long_prompt)
+prompt_embeds, pooled_prompt_embeds = encode_prompt_long(pipe, long_prompt, clip_skip=clip_skip)
 # Encode the negative prompt
-negative_prompt_embeds, negative_pooled_prompt_embeds = encode_prompt_long(pipe, negative_prompt)
+negative_prompt_embeds, negative_pooled_prompt_embeds = encode_prompt_long(pipe, negative_prompt, clip_skip=clip_skip)
 print("Encoding complete.")
 
 # --- PADDING ---
@@ -155,14 +223,14 @@ if prompt_embeds.shape != negative_prompt_embeds.shape:
     
     # Concatenate the original negative embeddings with the padding.
     negative_prompt_embeds = torch.cat([negative_prompt_embeds, padding], dim=1)
-    print(f"Shape after padding: {negative_prompt_embeds.shape}")
+    
+
+# ----------------------------------------------------------------------
+# Geração da imagem
 
 generator = torch.Generator(device="cuda").manual_seed(seed)
-
-# --- Generate the Image using Embeddings ---
-print(f"Generating image with seed {seed}...")
-# IMPORTANT: We now pass `prompt_embeds` and `pooled_prompt_embeds` instead of `prompt`.
-image = pipe(
+print(f"Gerando {batch_size} imagen(s) com semente {seed}...")
+generated_images = pipe(
     prompt_embeds=prompt_embeds,
     pooled_prompt_embeds=pooled_prompt_embeds,
     negative_prompt_embeds=negative_prompt_embeds,
@@ -172,32 +240,37 @@ image = pipe(
     num_inference_steps=steps,
     guidance_scale=cfg,
     generator=generator,
-).images[0]
-print("Image generated.")
+    num_images_per_prompt=batch_size,
+).images
+print("Imagen(s) geradas.")
 
-# --- Save the Output ---
-output_path = f"./basic-{seed}.png"
-image.save(output_path)
-print(f"Image saved successfully to {output_path}")
+# ----------------------------------------------------------------------
+# --- Grava todas as imagens geradas no batch
+for i, image in enumerate(generated_images):
+    output_path = f"./basic-{seed}-{i+1}.png"
+    image.save(output_path)
+    print(f"Imagem {i+1} gravada como {output_path}")
 
 
-# --- (Optional) Apply Hires. Fix ---
-# To use, simply uncomment the following lines.
-from hires_fix import apply_hires_fix
-hires_image = apply_hires_fix(
-    pipe=pipe,
-    prompt_embeds=prompt_embeds,
-    negative_prompt_embeds=negative_prompt_embeds,
-    pooled_prompt_embeds=pooled_prompt_embeds,
-    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
-    generator=generator,
-    image=image,
-    upscale_factor=upscale_factor,
-    denoising_strength=upscale_denoise,
-    cfg=cfg,
-    steps=steps,
-)
+# ----------------------------------------------------------------------
+# --- Optou por usar HiRes Fix Upscaler?
+if use_hires_fix:
+    from hires_fix import apply_hires_fix
+    for i, image in enumerate(generated_images):
+        hires_image = apply_hires_fix(
+            pipe=pipe,
+            prompt_embeds=prompt_embeds,
+            negative_prompt_embeds=negative_prompt_embeds,
+            pooled_prompt_embeds=pooled_prompt_embeds,
+            negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
+            generator=generator,
+            image=image,
+            upscale_factor=upscale_factor,
+            denoising_strength=upscale_denoise,
+            cfg=cfg,
+            steps=steps,
+        )
 
-hires_output_path = f"./hires-{seed}.png"
-hires_image.save(hires_output_path)
-print(f"Hires. Fix image saved successfully to {hires_output_path}")
+        hires_output_path = f"./hires-{seed}-{i+1}.png"
+        hires_image.save(hires_output_path)
+        print(f"Imagem ampliada {i+1} gravada como {hires_output_path}")
