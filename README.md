@@ -40,3 +40,9 @@ adicionais, e não pode transformar o software em algo proprietário.
 
 <img width="1121" height="607" alt="face2" src="https://github.com/user-attachments/assets/be05d6ff-1563-4ad0-a3bf-48e6def597c7" />
 
+```
+score_9, score_8_up, score_7_up, innocent and alluring, long hair, alternative vibe, 
+beautiful eyes, freckles, smiling, medium breasts, subtle cleavage, tight body, slutty, candid picture, 
+(cozy bedroom), off-shoulder shirt, dynamic angle, vibrant lighting, high contrast, dramatic shadows, 
+highly detailed, detailed skin, depth of field, film grain
+```
