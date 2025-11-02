@@ -2,6 +2,8 @@ import torch
 from PIL import Image
 from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline
 
+# Código inteiramente gerado pelo Gemini CLI
+
 def apply_hires_fix(
     pipe: StableDiffusionXLPipeline,
     prompt_embeds,
