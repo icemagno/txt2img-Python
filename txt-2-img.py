@@ -73,22 +73,22 @@ print("Lendo / Baixando o modelo...")
 #    use_safetensors=True
 # )
 # ----------------------------------------------------------------------
-#pipe = StableDiffusionXLPipeline.from_single_file(
-#    model_path,
-#    original_config=config_path,
-#    dtype=torch.float16,
-#    use_safetensors=True,
-#    local_files_only=False,
-#)
+pipe = StableDiffusionXLPipeline.from_single_file(
+    model_path,
+    original_config=config_path,
+    dtype=torch.float16,
+    use_safetensors=True,
+    local_files_only=False,
+)
 # ----------------------------------------------------------------------
 
 # ... ou se quer que o script baixe o modelo para você do site Hugging Face.
 # Isso vai baixar uns 6 ou 7 Gigas para sua máquina dependendo to tamanho do modelo.
-pipe = StableDiffusionXLPipeline.from_pretrained(
-    hf_model_id,
-    use_safetensors=True,
-    dtype=torch.float16,
-)
+#pipe = StableDiffusionXLPipeline.from_pretrained(
+#    hf_model_id,
+#    use_safetensors=True,
+#    dtype=torch.float16,
+#)
 # ----------------------------------------------------------------------
 
 print("Modelo carregado.")
@@ -292,3 +292,4 @@ if use_hires_fix:
         hires_output_path = f"./hires-{seed}-{i+1}.png"
         hires_image.save(hires_output_path)
         print(f"Imagem ampliada {i+1} gravada como {hires_output_path}")
+
