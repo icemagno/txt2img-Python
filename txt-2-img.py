@@ -8,6 +8,7 @@
 # python -m pip install xformers==0.0.23 
 # python -m pip install hf_xet
 # python -m pip install torchsde
+# python -m pip install peft
 # ----------------------------------------------------------------------
 
 import os
@@ -18,35 +19,47 @@ os.environ["DIFFUSERS_CACHE"]           = "./hf_cache"
 os.environ["HF_HUB_OFFLINE"]            = "0"
 
 import torch
-from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler, DPMSolverSDEScheduler,DPMSolverMultistepScheduler
+from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler, LCMScheduler, DPMSolverSDEScheduler,DPMSolverMultistepScheduler
 from PIL import Image
 import random
+from peft import LoraConfig, get_peft_model
 
-
+# Checkpoints baixados do CivitAI:
+# https://civitai.com/models/897413
+# [ x ] bigLove_pony3.safetensors
+# [ x ] bigLove_insta1.safetensors
+# [ x ] bigLove_xl4.safetensors
+# bigasp_v20
+# 
+# [ x ] realDream_sdxlPony14.safetensors
 # ----------------------------------------------------------------------
-model_path              = "/Magno/Projetos/train-model/digitalinfluencersv1.safetensors" # Está usando um checkpoint CivitAI?
-hf_model_id             = "John6666/goddess-of-realism-gor-pony-v2art-sdxl"              # ... ou vai querer baixar um modelo HuggingFace?  
-config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"                  # Usei os checkpoints Pony Diffusion então precisei disso
+
+# --- Modelos 
+model_path              = "/Magno/Projetos/train-model/bigLove_xl4.safetensors"    # Está usando um checkpoint local baixado do CivitAI?
+config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"             # Usei os checkpoints Pony Diffusion então precisei disso
+save_preview            = True                                                      # Grava imagens intermediarias do Sampler   
 # --- Generation Parameters 
-seed                    = 941758022     # random.randint(0, 2**32 - 1) se quiser gerar nova imagem a cada rodada
+seed                    = 941758023     # random.randint(0, 2**32 - 1) se quiser gerar nova imagem a cada rodada
 batch_size              = 1             # Quantas imagens você quer gerar?
-cfg                     = 2.3           # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
-steps                   = 15            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
+cfg                     = 7             # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
+steps                   = 20            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
 width                   = 960           # Largura da imagem ( siga o padrão SDXL )
 height                  = 1280          # Altura da imagem  ( siga o padrão SDXL )
 clip_skip               = 2             # Quantas camadas finais pular do CLIP Text Encoder
 # --- Upscale HiRes Fix
-use_hires_fix           = True          # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
+use_hires_fix           = True         # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
 upscale_factor          = 1.5           # Quer ampliar quantas vezes a imagem original?
-upscale_denoise         = 0.46          # O quanto quer modificar a imagem original no processo de upscaling?
+upscale_denoise         = 0.45          # O quanto quer modificar a imagem original no processo de upscaling?
 # --- Prompt File Paths ---
 long_prompt_file        = "./prompt-2.txt"          # O prompt
 negative_prompt_file    = "./negative_prompt.txt"   # O que quer evitar na imagem?
-
 # ----------------------------------------------------------------------
+use_local               = True
 # ----------------------------------------------------------------------
 
 
+# os.mkdir("./sampler-images")
+os.makedirs(f"./sampler-images/{seed}", exist_ok=True)
 
 
 # ----------------------------------------------------------------------
@@ -63,37 +76,20 @@ negative_prompt = load_prompt_from_file(negative_prompt_file)
 
 
 # ----------------------------------------------------------------------
-print("Lendo / Baixando o modelo...")
-# Se você baixou algum checkpoint do site CivitAI ...
-#
-# ---------- Descomente esse trecho somente se tiver problemas ao encontrar 
-# ---------- os arquivos de base do SD 1.5 
-# just_to_download_the_base_files = DiffusionPipeline.from_pretrained(
-#    "stable-diffusion-v1-5/stable-diffusion-v1-5",
-#    use_safetensors=True
-# )
-# ----------------------------------------------------------------------
+print(f"Carregando Modelo {model_path} ")
 pipe = StableDiffusionXLPipeline.from_single_file(
     model_path,
     original_config=config_path,
-    dtype=torch.float16,
+    torch_dtype=torch.float16,
     use_safetensors=True,
-    local_files_only=False,
+    local_files_only=False
 )
-# ----------------------------------------------------------------------
-
-# ... ou se quer que o script baixe o modelo para você do site Hugging Face.
-# Isso vai baixar uns 6 ou 7 Gigas para sua máquina dependendo to tamanho do modelo.
-#pipe = StableDiffusionXLPipeline.from_pretrained(
-#    hf_model_id,
-#    use_safetensors=True,
-#    dtype=torch.float16,
-#)
 # ----------------------------------------------------------------------
 
 print("Modelo carregado.")
 pipe.to("cuda")
-
+pipe.enable_attention_slicing()
+pipe.enable_vae_tiling()
 
 # ----------------------------------------------------------------------
 # Escolha UM Scheduler apenas:
@@ -101,10 +97,19 @@ pipe.to("cuda")
 # ----------------------------------------------------------------------
 # Scheduler Euler A 
 # ----------------------------------------------------------------------
-# pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(
-#   pipe.scheduler.config
-# )
+pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(
+  pipe.scheduler.config
+)
 # ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# Scheduler LCM Sampler
+# ----------------------------------------------------------------------
+#pipe.scheduler = LCMScheduler.from_config(
+#    pipe.scheduler.config
+#)
+# ----------------------------------------------------------------------
+
 
 # ----------------------------------------------------------------------
 # Scheduler Euler A Karras
@@ -118,10 +123,10 @@ pipe.to("cuda")
 # ----------------------------------------------------------------------
 # Scheduler DPM++ SDE Karras
 # ----------------------------------------------------------------------
-pipe.scheduler = DPMSolverSDEScheduler.from_config(
-    pipe.scheduler.config,
-    use_karras_sigmas=True
-)
+#pipe.scheduler = DPMSolverSDEScheduler.from_config(
+#    pipe.scheduler.config,
+#    use_karras_sigmas=True
+#)
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
@@ -245,7 +250,6 @@ if prompt_embeds.shape != negative_prompt_embeds.shape:
 
 # ----------------------------------------------------------------------
 # Geração da imagem
-
 generator = torch.Generator(device="cuda").manual_seed(seed)
 print(f"Gerando {batch_size} imagen(s) com semente {seed}...")
 generated_images = pipe(
@@ -258,7 +262,7 @@ generated_images = pipe(
     num_inference_steps=steps,
     guidance_scale=cfg,
     generator=generator,
-    num_images_per_prompt=batch_size,
+    num_images_per_prompt=batch_size
 ).images
 print("Imagen(s) geradas.")
 
@@ -292,4 +296,3 @@ if use_hires_fix:
         hires_output_path = f"./hires-{seed}-{i+1}.png"
         hires_image.save(hires_output_path)
         print(f"Imagem ampliada {i+1} gravada como {hires_output_path}")
-
