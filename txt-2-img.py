@@ -42,14 +42,14 @@ save_preview            = True                                                  
 # --- Generation Parameters 
 seed                    = 941758023     # random.randint(0, 2**32 - 1) se quiser gerar nova imagem a cada rodada
 batch_size              = 1             # Quantas imagens você quer gerar?
-cfg                     = 4             # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
+cfg                     = 7             # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
 steps                   = 20            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
 # 1024x1496 960x1280 832x1216
-width                   = 832           # Largura da imagem ( siga o padrão SDXL ) 
-height                  = 1216          # Altura da imagem  ( siga o padrão SDXL )
+width                   = 960           # Largura da imagem ( siga o padrão SDXL ) 
+height                  = 1280          # Altura da imagem  ( siga o padrão SDXL )
 clip_skip               = 2             # Quantas camadas finais pular do CLIP Text Encoder
 # --- Upscale HiRes Fix
-use_hires_fix           = True         # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
+use_hires_fix           = False         # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
 upscale_factor          = 1.5           # Quer ampliar quantas vezes a imagem original?
 upscale_denoise         = 0.45          # O quanto quer modificar a imagem original no processo de upscaling?
 # --- Prompt File Paths ---
