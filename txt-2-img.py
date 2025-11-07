@@ -194,9 +194,9 @@ for i in range (1, batch_size):
     ).images
     print("Imagen(s) geradas.")
 
-    output_path = f"./output-images/{job_output}/{seed}_basic-{i+1}.png"
+    output_path = f"./output-images/{job_output}/{seed}_basic-{i}.png"
     image[0].save(output_path)
-    print(f"Imagem {i+1} gravada como {output_path}")
+    print(f"Imagem {i} gravada como {output_path}")
 
     if use_hires_fix:
         hires_image = apply_hires_fix(
@@ -212,6 +212,7 @@ for i in range (1, batch_size):
             cfg=cfg,
             steps=steps,
         )
-        hires_output_path = f"./output-images/{job_output}/{seed}_hires-{i+1}.png"
+        hires_output_path = f"./output-images/{job_output}/{seed}_hires-{i}.png"
         hires_image.save(hires_output_path)
         print(f"Imagem ampliada {i+1} gravada como {hires_output_path}")
+
