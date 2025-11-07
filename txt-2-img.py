@@ -22,7 +22,6 @@ import torch
 from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler, LCMScheduler, DPMSolverSDEScheduler,DPMSolverMultistepScheduler
 from PIL import Image
 import random
-from peft import LoraConfig, get_peft_model
 from prompt_encoder import encode_prompt_long
 from hires_fix import apply_hires_fix
 
@@ -36,14 +35,13 @@ from hires_fix import apply_hires_fix
 # ----------------------------------------------------------------------
 
 # --- Modelos 
-model_path              = "/Magno/Projetos/train-model/bigLove_xl4.safetensors"    # Está usando um checkpoint local baixado do CivitAI?
-config_path             = "/Magno/Projetos/train-model/sd_xl_base.yaml"             # Usei os checkpoints Pony Diffusion então precisei disso
-save_preview            = True                                                      # Grava imagens intermediarias do Sampler   
+model_path              = "/Magno/Projetos/train-model/models/bigLove_xl4.safetensors"    # Está usando um checkpoint local baixado do CivitAI?
+config_path             = "/Magno/Projetos/train-model/models/sd_xl_base.yaml"             # Usei os checkpoints Pony Diffusion então precisei disso
+save_preview            = True          # Grava imagens intermediarias do Sampler   
 # --- Generation Parameters 
-seed                    = 941758023     # random.randint(0, 2**32 - 1) se quiser gerar nova imagem a cada rodada
-batch_size              = 1             # Quantas imagens você quer gerar?
-cfg                     = 7             # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
-steps                   = 20            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
+batch_size              = 40             # Quantas imagens você quer gerar?
+cfg                     = 3             # Classifier-Free Guidance Scale - Criatividade versus Prompt (abstração <-> fidelidade)
+steps                   = 30            # Quantidade de "pinceladas" na difusão ( rascunho <-> refinamento)
 # 1024x1496 960x1280 832x1216
 width                   = 960           # Largura da imagem ( siga o padrão SDXL ) 
 height                  = 1280          # Altura da imagem  ( siga o padrão SDXL )
@@ -51,18 +49,13 @@ clip_skip               = 2             # Quantas camadas finais pular do CLIP T
 # --- Upscale HiRes Fix
 use_hires_fix           = False         # Usar HiRes Fix Upscaler? Vai ampliar a imagem e melhorar a resolução
 upscale_factor          = 1.5           # Quer ampliar quantas vezes a imagem original?
-upscale_denoise         = 0.45          # O quanto quer modificar a imagem original no processo de upscaling?
+upscale_denoise         = 0.48          # O quanto quer modificar a imagem original no processo de upscaling?
 # --- Prompt File Paths ---
 long_prompt_file        = "./prompt-2.txt"          # O prompt
 negative_prompt_file    = "./negative_prompt.txt"   # O que quer evitar na imagem?
 # ----------------------------------------------------------------------
 use_local               = True
 # ----------------------------------------------------------------------
-
-
-# os.mkdir("./sampler-images")
-os.makedirs(f"./sampler-images/{seed}", exist_ok=True)
-os.makedirs(f"./output-images/{seed}", exist_ok=True)
 
 # ----------------------------------------------------------------------
 # ----------------- Ler os prompts do arquivo --------------------------
@@ -180,35 +173,32 @@ if prompt_embeds.shape != negative_prompt_embeds.shape:
 
 # ----------------------------------------------------------------------
 # Geração da imagem
-generator = torch.Generator(device="cuda").manual_seed(seed)
-print(f"Gerando {batch_size} imagen(s) com semente {seed}...")
-generated_images = pipe(
-    prompt_embeds=prompt_embeds,
-    pooled_prompt_embeds=pooled_prompt_embeds,
-    negative_prompt_embeds=negative_prompt_embeds,
-    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
-    width=width,
-    height=height,
-    num_inference_steps=steps,
-    guidance_scale=cfg,
-    generator=generator,
-    num_images_per_prompt=batch_size
-).images
-print("Imagen(s) geradas.")
+job_output = random.randint(0, 2**32 - 1) 
+os.makedirs(f"./output-images/{job_output}", exist_ok=True)
+print(f"Gerando {batch_size} imagen(s) na pasta {job_output}")
+for i in range (1, batch_size):
+    seed = random.randint(0, 2**32 - 1) 
+    generator = torch.Generator(device="cuda").manual_seed(seed)
+    print(f"Gerando imagem com semente {seed} na pasta {job_output}")
+    image = pipe(
+        prompt_embeds=prompt_embeds,
+        pooled_prompt_embeds=pooled_prompt_embeds,
+        negative_prompt_embeds=negative_prompt_embeds,
+        negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
+        width=width,
+        height=height,
+        num_inference_steps=steps,
+        guidance_scale=cfg,
+        generator=generator,
+        num_images_per_prompt=1
+    ).images
+    print("Imagen(s) geradas.")
 
-# ----------------------------------------------------------------------
-# --- Grava todas as imagens geradas no batch
-for i, image in enumerate(generated_images):
-
-    output_path = f"./output-images/{seed}/basic-{i+1}.png"
-    image.save(output_path)
+    output_path = f"./output-images/{job_output}/{seed}_basic-{i+1}.png"
+    image[0].save(output_path)
     print(f"Imagem {i+1} gravada como {output_path}")
 
-
-# ----------------------------------------------------------------------
-# --- Optou por usar HiRes Fix Upscaler?
-if use_hires_fix:
-    for i, image in enumerate(generated_images):
+    if use_hires_fix:
         hires_image = apply_hires_fix(
             pipe=pipe,
             prompt_embeds=prompt_embeds,
@@ -216,13 +206,12 @@ if use_hires_fix:
             pooled_prompt_embeds=pooled_prompt_embeds,
             negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
             generator=generator,
-            image=image,
+            image=image[0],
             upscale_factor=upscale_factor,
             denoising_strength=upscale_denoise,
             cfg=cfg,
             steps=steps,
         )
-
-        hires_output_path = f"./output-images/{seed}/hires-{i+1}.png"
+        hires_output_path = f"./output-images/{job_output}/{seed}_hires-{i+1}.png"
         hires_image.save(hires_output_path)
         print(f"Imagem ampliada {i+1} gravada como {hires_output_path}")
